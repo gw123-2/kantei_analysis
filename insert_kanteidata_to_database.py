@@ -8,9 +8,10 @@ def setup_database(database_connection:sqlite3.Connection):
                             internal_person_id INTEGER PRIMARY KEY,
                             first_name TEXT NOT NULL,
                             last_name TEXT NOT NULL,
-                            gender TEXT NOT NULL,
-                            birth_date TEXT NOT NULL,
-                            death_date TEXT);
+                            first_name_furigana TEXT,
+                            last_name_furigana TEXT,
+                            gender TEXT NOT NULL
+                            );
         
     """)
     database_connection.commit()
@@ -20,12 +21,100 @@ def setup_database(database_connection:sqlite3.Connection):
                             cabinett_reshuffle  INTEGER NOT NULL,
                             start_date TEXT NOT NULL,
                             end_date TEXT NOT NULL ,
-                            prime_minister INTEGER,
 
                             PRIMARY KEY (cabinett_number, cabinett_reshuffle)
                             );
 """)
     database_connection.commit()
+
+
+def populate_database_with_cabinett_members(database_connection:sqlite3.Connection, cabinett_site:str):
+    database_cursor_columnname_check = database_connection.cursor()
+    database_cursor_columnname_check.row_factory = sqlite3.Row
+    database_cursor_columnname_check.execute("select * from cabinett")
+    row = database_cursor_columnname_check.fetchone()
+    column_names = row.keys()
+    print(column_names)
+    database_cursor_insert = database_connection.cursor()
+
+    shuffle_member_matrix = create_Shuffle_memebers_matrix(cabinett_site)
+    for shuffle in shuffle_member_matrix:
+        for member_with_role in shuffle:
+            database_cursor_insert.execute("""
+            INSERT INTO PERSON (first_name, last_name, first_name_furigana, last_name_furigana, gender) VALUES(?, ? ,? ,?, ?)
+        """, (member_with_role[0][0][0], member_with_role[0][0][1],member_with_role[0][1][0], member_with_role[0][1][1], "m"))
+            database_connection.commit()
+
+
+
+def create_Shuffle_memebers_matrix(cabinett_site):
+    shuffle_html_blocks = regex.findall("<section>.+?</section>", cabinett_site, flags=regex.DOTALL)
+ 
+    shuffle_members_matrix = []
+    for block in shuffle_html_blocks:
+        members_with_role_in_shuffle_html = regex.findall("<tr>.+?scope=\"row\".+?</tr>", block, flags=regex.DOTALL)
+        members_with_role_in_shuffle_clean = get_cabinett_members_with_role_per_shuffle_clean(members_with_role_in_shuffle_html)
+
+        shuffle_members_matrix.append(members_with_role_in_shuffle_clean)
+    
+    return shuffle_members_matrix 
+        
+
+def get_cabinett_members_with_role_per_shuffle_clean(shuffle_raw_html):
+    members_with_role_in_shuffle_clean = []        
+    for member in shuffle_raw_html:
+    
+        name_html:str = regex.findall("<td>.+?</td>", member, flags=regex.DOTALL)[0]        
+        name_clean = split_cabinett_member_name_in_clean_kanji_furigana(name_html)
+
+        roles_html = regex.findall("<li>.+?</li>", member, flags=regex.DOTALL)
+        roles_clean = get_clean_roles_from_html(roles_html)
+    
+        members_with_role_in_shuffle_clean.append([name_clean, roles_clean])
+    return members_with_role_in_shuffle_clean
+
+def split_cabinett_member_name_in_clean_kanji_furigana(name_raw_html):
+
+
+
+    name_clean = name_raw_html.replace("<td>", "")
+    name_clean = name_clean.replace("</td>", "")
+
+    if name_clean.find("alt=") >= 0:
+        real_name_ind = name_clean.find("alt=\"")
+        name_clean= name_clean[real_name_ind:]
+
+    name_clean = name_clean.replace("\"", "")
+    name_clean = name_clean.replace("alt=", "")
+    name_clean = name_clean.replace(">", "")
+    name_clean = name_clean.replace("　", " ")
+    name_clean:str = name_clean.replace("）", "")
+    name_clean = name_clean.split("（")
+    name_furigana_clean = name_clean[1].split(" ")
+    name_kanji_clean = name_clean[0].split(" ")
+
+    return [name_kanji_clean, name_furigana_clean]
+
+
+
+def get_clean_roles_from_html(roles_raw_html):
+    roles_clean = []
+    for role_html in roles_raw_html:
+        if not is_cabinett_role_faulty(role_html):
+            clean_role = cleanup_role_name(role_html)
+            roles_clean.append(clean_role)
+    return roles_clean
+
+
+def cleanup_role_name(role_raw_html):
+    clean_role = role_raw_html.replace("<li>" ,"")
+    clean_role = clean_role.replace("</li>" ,"")
+    return clean_role
+
+
+def is_cabinett_role_faulty(role_html):
+    filter_role = regex.findall(".{3,5}年\d{1,2}月\d{1,2}日", role_html)
+    return len(filter_role)>0
 
 
 def populate_database_with_cabinett_data(database_connection:sqlite3.Connection, cabinett_site:str):
@@ -69,19 +158,25 @@ def cleanup_shuffle_date(date:str):
 
 
 def get_html_text(url:str):
-    html_file = open(url, encoding="utf8", errors="surrogateescape")
-    html_text = html_file.read()
-    html_file.close()
-    return html_text
-
+    try:
+        html_file = open(url, encoding="utf8", errors="surrogateescape")
+        html_text = html_file.read()
+        html_file.close()
+        return html_text
+    except FileNotFoundError:
+        print("file cannot be found")
+        return None
 if __name__ == "__main__":
     database_path = input("path to databse:")
     database_connection = sqlite3.connect(database_path)
     
     setup_database(database_connection)
 
-    site_to_be_analyzed = input("input url to site: ")
-    cabinett_site_html = get_html_text(site_to_be_analyzed)
-
+    cabinett_site_html = None
+    while cabinett_site_html == None:
+        site_to_be_analyzed = input("input url to site: ")
+        cabinett_site_html = get_html_text(site_to_be_analyzed)
+    
     populate_database_with_cabinett_data(database_connection, cabinett_site_html)
+    populate_database_with_cabinett_members(database_connection, cabinett_site_html)
 
