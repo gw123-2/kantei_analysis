@@ -1,8 +1,8 @@
 import sqlite3
 import re as regex
+import urllib.request
 
-def setup_database(database_connection:sqlite3.Connection):
-    database_cursor = database_connection.cursor()
+def setup_database(database_cursor:sqlite3.Cursor):
     database_cursor.execute("""
         CREATE TABLE PERSON(
                             internal_person_id INTEGER PRIMARY KEY,
@@ -20,7 +20,6 @@ def setup_database(database_connection:sqlite3.Connection):
                             cabinett_number INTEGER NOT NULL,
                             cabinett_reshuffle  INTEGER NOT NULL,
                             start_date TEXT NOT NULL,
-                            end_date TEXT NOT NULL ,
 
                             PRIMARY KEY (cabinett_number, cabinett_reshuffle)
                             );
@@ -35,14 +34,32 @@ def setup_database(database_connection:sqlite3.Connection):
                             PRIMARY KEY (cabinett_number, cabinett_reshuffle, role_name, cabinett_member)
                             );
 """)
-    database_connection.commit()
+    
 
 
-def log(*args):
+def log( *args, filename=None):
+    string = create_combined_string(args, "; ")
+    if(filename==None):
+        print(string)
+    else:
+        append_file(filename, string)
+        
+
+def append_file(filename, new_content):
+    file = open(filename, "a", encoding="utf-8")
+    file.write(str(new_content))
+    file.close
+
+def create_combined_string(list, splitter_character):
     string = ""
-    for arg in args:
+    first = True
+    for arg in list:
+        if not first:
+            string += splitter_character
+        else:
+            first = False
         string += str(arg)
-    print(string)
+    return string
 
 def populate_database_with_cabinett_members(database_connection:sqlite3.Connection, cabinett_site:str):
     database_cursor = database_connection.cursor()
@@ -69,11 +86,12 @@ def add_minister_to_cabinett(database_cursor, member_with_role, cabinett_number,
         give_roles_to_minister(database_cursor, role, person_id, cabinett_number, shuffle)
 
 def give_roles_to_minister(database_cursor, role, person_id, cabinett_number, shuffle):
-    log("GIVE ROLE "+ role +" TO " + str(person_id) + " FOR CABINETT "+ cabinett_number + " RESHUFFLE " + str(shuffle))
+    #log("GIVE ROLE "+ role +" TO " + str(person_id) + " FOR CABINETT "+ cabinett_number + " RESHUFFLE " + str(shuffle))
     try:
         database_cursor.execute("INSERT INTO CABINETT_ROLE (cabinett_number, cabinett_reshuffle, cabinett_member, role_name) VALUES(?,?,?,?);",(cabinett_number, shuffle, person_id, role))
     except sqlite3.IntegrityError:
-        log("ALREADY EXISTING")
+       #log("ALREADY EXISTING")
+       pass
 
             
 
@@ -147,10 +165,20 @@ def split_cabinett_member_name_in_clean_kanji_furigana(name_raw_html):
     name_clean = name_clean.replace("alt=", "")
     name_clean = name_clean.replace(">", "")
     name_clean = name_clean.replace("　", " ")
-    name_clean:str = name_clean.replace("）", "")
+    name_clean:str = name_clean.replace("＊", "")
+    name_clean:str = name_clean.replace("）", "")    
     name_clean = name_clean.split("（")
-    name_furigana_clean = name_clean[1].split(" ")
-    name_kanji_clean = name_clean[0].split(" ")
+    try:
+        name_furigana_clean = name_clean[1].split(" ")
+        name_kanji_clean = name_clean[0].split(" ")
+    except IndexError:
+        name_furigana_clean = ["", ""]
+        name_kanji_clean = name_clean[0].split(" ")
+    if len(name_kanji_clean) != 2:
+        name_kanji_clean = [name_kanji_clean[0], name_kanji_clean[0]]
+    if len(name_furigana_clean) != 2:
+        name_furigana_clean = ["", ""]
+        
 
     return [name_kanji_clean, name_furigana_clean]
 
@@ -168,6 +196,7 @@ def get_clean_roles_from_html(roles_raw_html):
 def cleanup_role_name(role_raw_html):
     clean_role = role_raw_html.replace("<li>" ,"")
     clean_role = clean_role.replace("</li>" ,"")
+    clean_role = clean_role.replace("<br>" ,"")
     return clean_role
 
 
@@ -178,16 +207,19 @@ def is_cabinett_role_faulty(role_html):
 
 def populate_database_with_cabinett_data(database_connection:sqlite3.Connection, cabinett_site:str):
     cabinett_number = get_cabinett_number_from_html(cabinett_site)
-    cabinett_shuffle = get_cabinett_shuffles_from_html(cabinett_site)
-        
-    insert_new_cabinett_into_database(database_connection.cursor(), cabinett_number, cabinett_shuffle)
+    cabinett_shuffles = get_cabinett_shuffles_from_html(cabinett_site)
+
+    log("CABINETT: " + cabinett_number)
+
+    insert_new_cabinett_into_database(database_connection.cursor(), cabinett_number, cabinett_shuffles)
     database_connection.commit()
 
 def insert_new_cabinett_into_database(database_cursor:sqlite3.Cursor, number, shuffles):
+    
     for i in range(len(shuffles)):
         database_cursor.execute("""
-            INSERT INTO CABINETT (cabinett_number, cabinett_reshuffle, start_date, end_date) VALUES(?, ?, ? ,?)
-        """, (str(number), str(i), str(shuffles[i][0]), str(shuffles[i][1]))  )
+            INSERT INTO CABINETT (cabinett_number, cabinett_reshuffle, start_date) VALUES(?, ?, ?)
+        """, (str(number), str(i), str(shuffles[i]))  )
 
     
 def get_cabinett_number_from_html(cabinett_site:str):
@@ -197,7 +229,7 @@ def get_cabinett_number_from_html(cabinett_site:str):
     return cabinett_number
 
 def get_cabinett_shuffles_from_html(cabinett_site):
-    shuffles_raw = regex.findall("<p class=\"module-detail-text module-text--note\">.{3,5}年\d{1,2}月\d{1,2}日発足　.{3,5}年\d{1,2}月\d{1,2}日現在</p>",cabinett_site )
+    shuffles_raw = regex.findall("<p class=\"module-detail-text module-text--note\">.{3,5}年\d{1,2}月\d{1,2}日.+?</p>",cabinett_site )
     clean_shuffles = clean_cabinett_shuffle_htmltext_dates(shuffles_raw)
     return clean_shuffles
 
@@ -208,34 +240,64 @@ def clean_cabinett_shuffle_htmltext_dates(dates:list):
     return clean_dates
 
 def cleanup_shuffle_date(date:str):
-    clean_date:str = regex.findall(">.{3,5}年\d{1,2}月\d{1,2}日発足　.{3,5}年\d{1,2}月\d{1,2}日現在", date)[0]
-    clean_date = clean_date.replace("発足", "")
-    clean_date = clean_date.replace("現在", "")
+    clean_date:str = regex.findall(">.{3,5}年\d{1,2}月\d{1,2}日", date)[0]
     clean_date = clean_date.replace(">", "")
+    return clean_date
 
-    return clean_date.split("　")
+def get_cabinett_page_link_list_from_index_page(index_page_html):
+    links = regex.findall("/jp/rekidainaikaku/\d{1,3}.html\"", index_page_html)
+    clean_links = cleanup_links_to_cabinett_site(links)
+    return clean_links
+    
+    
+def cleanup_links_to_cabinett_site(links):
+    clean_links = []
+    for link in links:
+        clean_link:str = link.replace("<a href=\"", "")
+        clean_link = clean_link.replace("\"","")
+        clean_link = clean_link.replace(" ","")
+        clean_link = "https://www.kantei.go.jp" + clean_link
+        clean_links.append(clean_link)
 
+    return clean_links    
 
 def get_html_text(url:str):
+    log("fetching data from: " + url)
+    html = urllib.request.urlopen(url).read()
+    decoded_html = html.decode("utf8")
+    log("got data from: " + url)
+    return decoded_html
+        
+
+def get_html_text_from_file(path:str):
     try:
-        html_file = open(url, encoding="utf8", errors="surrogateescape")
+        html_file = open(path, encoding="utf8", errors="surrogateescape")
         html_text = html_file.read()
         html_file.close()
         return html_text
     except FileNotFoundError:
         log("file cannot be found")
         return None
+    
+def fill_database_with_cabinett_data_from_website(index_site_html, database_connection):
+    links = get_cabinett_page_link_list_from_index_page(index_site_html)
+    for link in links:
+        cabinett_site_html = get_html_text(link)
+        populate_database_with_cabinett_data(database_connection, cabinett_site_html)
+        populate_database_with_cabinett_members(database_connection, cabinett_site_html)
+
 if __name__ == "__main__":
     database_path = input("path to databse:")
     database_connection = sqlite3.connect(database_path)
     
-    setup_database(database_connection)
-
-    cabinett_site_html = None
-    while cabinett_site_html == None:
-        site_to_be_analyzed = input("input url to site: ")
-        cabinett_site_html = get_html_text(site_to_be_analyzed)
-    
-    populate_database_with_cabinett_data(database_connection, cabinett_site_html)
-    populate_database_with_cabinett_members(database_connection, cabinett_site_html)
-
+    log("setting up database...")
+    setup_database(database_connection.cursor())
+    database_connection.commit()
+    log("done!")
+    index_site_html = None
+    while index_site_html == None:
+        site_to_be_analyzed = input("input url to kantei site: ")
+        index_site_html = get_html_text(site_to_be_analyzed)
+    log("filling database with data...")
+    fill_database_with_cabinett_data_from_website(index_site_html, database_connection)
+    log("Done!")
