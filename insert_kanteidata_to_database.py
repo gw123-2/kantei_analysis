@@ -38,25 +38,42 @@ def setup_database(database_connection:sqlite3.Connection):
     database_connection.commit()
 
 
+def log(*args):
+    string = ""
+    for arg in args:
+        string += str(arg)
+    print(string)
+
 def populate_database_with_cabinett_members(database_connection:sqlite3.Connection, cabinett_site:str):
-    database_cursor_insert = database_connection.cursor()
-
+    database_cursor = database_connection.cursor()
+    
+    cabinett_number = get_cabinett_number_from_html(cabinett_site)
     shuffle_member_matrix = create_Shuffle_memebers_matrix(cabinett_site)
-    for shuffle in range(len(shuffle_member_matrix)) :
-        print("SHUFFLE " + str(shuffle))
-        for member_with_role in shuffle_member_matrix[shuffle]:
-            Insert_person_to_database(database_connection, member_with_role[0], "m", "LDP")
-            person_id = get_id_of_person(database_connection, member_with_role[0])
-            cabinett_number = get_cabinett_number_from_html(cabinett_site)
-            for role in member_with_role[1]:
-                print("GIVE ROLE "+ role +" TO " + str(person_id) + " FOR CABINETT "+ cabinett_number + " RESHUFFLE " + str(shuffle))
-                try:
-                    database_cursor_insert.execute("INSERT INTO CABINETT_ROLE (cabinett_number, cabinett_reshuffle, cabinett_member, role_name) VALUES(?,?,?,?);",(cabinett_number, shuffle, person_id, role))
-                except sqlite3.IntegrityError:
-                    print("ALREADY EXISTING")
-        database_connection.commit()
-            
+    insert_shuffle_member_matrix_into_database(database_cursor, shuffle_member_matrix, cabinett_number)
 
+    database_connection.commit()
+    
+            
+def insert_shuffle_member_matrix_into_database(database_cursor, shuffle_member_matrix, cabinett_number):
+    for shuffle in range(len(shuffle_member_matrix)) :
+        log("SHUFFLE " + str(shuffle+1)+ "/" + str(len(shuffle_member_matrix)))
+        for member_with_role in shuffle_member_matrix[shuffle]:
+            add_minister_to_cabinett(database_cursor, member_with_role, cabinett_number, shuffle)
+                
+        
+
+def add_minister_to_cabinett(database_cursor, member_with_role, cabinett_number, shuffle):
+    Insert_person_to_database(database_cursor, member_with_role[0], "m", "LDP")
+    person_id = get_id_of_person(database_cursor, member_with_role[0])
+    for role in member_with_role[1]:
+        give_roles_to_minister(database_cursor, role, person_id, cabinett_number, shuffle)
+
+def give_roles_to_minister(database_cursor, role, person_id, cabinett_number, shuffle):
+    log("GIVE ROLE "+ role +" TO " + str(person_id) + " FOR CABINETT "+ cabinett_number + " RESHUFFLE " + str(shuffle))
+    try:
+        database_cursor.execute("INSERT INTO CABINETT_ROLE (cabinett_number, cabinett_reshuffle, cabinett_member, role_name) VALUES(?,?,?,?);",(cabinett_number, shuffle, person_id, role))
+    except sqlite3.IntegrityError:
+        log("ALREADY EXISTING")
 
             
 
@@ -70,8 +87,7 @@ def is_role_in_columns(role, columns):
 def person_in_database(database_connection:sqlite3.Connection, name):
     return get_id_of_person(database_connection, name) > 0
     
-def get_id_of_person(database_connection:sqlite3.Connection, name):
-    database_cursor = database_connection.cursor()
+def get_id_of_person(database_cursor:sqlite3.Cursor, name):
     database_cursor.execute("""
         SELECT internal_person_id FROM PERSON WHERE first_name = ? AND last_name = ? AND first_name_furigana = ? AND last_name_furigana = ?;
     """, (name[0][0],name[0][1],name[1][0], name[1][1]))
@@ -83,17 +99,13 @@ def get_id_of_person(database_connection:sqlite3.Connection, name):
     
     return person_id
 
-def Insert_person_to_database(database_connection:sqlite3.Connection, name, gender, party):
-    
-    database_cursor =  database_connection.cursor()
+def Insert_person_to_database(database_cursor:sqlite3.Cursor, name, gender, party):
 
-    if(not person_in_database(database_connection, name)):
+    if(not person_in_database(database_cursor, name)):
         database_cursor.execute("""
                 INSERT INTO PERSON (first_name, last_name, first_name_furigana, last_name_furigana, gender, party) VALUES(?, ? ,? ,?, ?, ?);
             """, (name[0][0],name[0][1],name[1][0], name[1][1], gender, party))
         
-
-
 
 
 def create_Shuffle_memebers_matrix(cabinett_site):
@@ -168,15 +180,15 @@ def populate_database_with_cabinett_data(database_connection:sqlite3.Connection,
     cabinett_number = get_cabinett_number_from_html(cabinett_site)
     cabinett_shuffle = get_cabinett_shuffles_from_html(cabinett_site)
         
-    insert_new_cabinett_into_database(database_connection, cabinett_number, cabinett_shuffle)
+    insert_new_cabinett_into_database(database_connection.cursor(), cabinett_number, cabinett_shuffle)
+    database_connection.commit()
 
-def insert_new_cabinett_into_database(database_connection:sqlite3.Connection, number, shuffles):
-    database_cursor = database_connection.cursor()
+def insert_new_cabinett_into_database(database_cursor:sqlite3.Cursor, number, shuffles):
     for i in range(len(shuffles)):
         database_cursor.execute("""
             INSERT INTO CABINETT (cabinett_number, cabinett_reshuffle, start_date, end_date) VALUES(?, ?, ? ,?)
         """, (str(number), str(i), str(shuffles[i][0]), str(shuffles[i][1]))  )
-        database_connection.commit()
+
     
 def get_cabinett_number_from_html(cabinett_site:str):
     cabinett_number:str = regex.findall("第\d{1,3}代",cabinett_site)[0]
@@ -211,7 +223,7 @@ def get_html_text(url:str):
         html_file.close()
         return html_text
     except FileNotFoundError:
-        print("file cannot be found")
+        log("file cannot be found")
         return None
 if __name__ == "__main__":
     database_path = input("path to databse:")
