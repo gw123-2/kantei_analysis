@@ -10,11 +10,11 @@ def setup_database(database_connection:sqlite3.Connection):
                             last_name TEXT NOT NULL,
                             first_name_furigana TEXT,
                             last_name_furigana TEXT,
-                            gender TEXT NOT NULL
+                            gender TEXT NOT NULL,
+                            party TEXT NOT NULL
                             );
         
     """)
-    database_connection.commit()
     database_cursor.execute("""
     CREATE TABLE CABINETT(
                             cabinett_number INTEGER NOT NULL,
@@ -25,25 +25,74 @@ def setup_database(database_connection:sqlite3.Connection):
                             PRIMARY KEY (cabinett_number, cabinett_reshuffle)
                             );
 """)
+    database_cursor.execute("""
+    CREATE TABLE CABINETT_ROLE(
+                            cabinett_number INTEGER NOT NULL,
+                            cabinett_reshuffle  INTEGER NOT NULL,
+                            cabinett_member TEXT NOT NULL,
+                            role_name TEXT NOT NULL ,
+
+                            PRIMARY KEY (cabinett_number, cabinett_reshuffle, role_name, cabinett_member)
+                            );
+""")
     database_connection.commit()
 
 
 def populate_database_with_cabinett_members(database_connection:sqlite3.Connection, cabinett_site:str):
-    database_cursor_columnname_check = database_connection.cursor()
-    database_cursor_columnname_check.row_factory = sqlite3.Row
-    database_cursor_columnname_check.execute("select * from cabinett")
-    row = database_cursor_columnname_check.fetchone()
-    column_names = row.keys()
-    print(column_names)
     database_cursor_insert = database_connection.cursor()
 
     shuffle_member_matrix = create_Shuffle_memebers_matrix(cabinett_site)
-    for shuffle in shuffle_member_matrix:
-        for member_with_role in shuffle:
-            database_cursor_insert.execute("""
-            INSERT INTO PERSON (first_name, last_name, first_name_furigana, last_name_furigana, gender) VALUES(?, ? ,? ,?, ?)
-        """, (member_with_role[0][0][0], member_with_role[0][0][1],member_with_role[0][1][0], member_with_role[0][1][1], "m"))
-            database_connection.commit()
+    for shuffle in range(len(shuffle_member_matrix)) :
+        print("SHUFFLE " + str(shuffle))
+        for member_with_role in shuffle_member_matrix[shuffle]:
+            Insert_person_to_database(database_connection, member_with_role[0], "m", "LDP")
+            person_id = get_id_of_person(database_connection, member_with_role[0])
+            cabinett_number = get_cabinett_number_from_html(cabinett_site)
+            for role in member_with_role[1]:
+                print("GIVE ROLE "+ role +" TO " + str(person_id) + " FOR CABINETT "+ cabinett_number + " RESHUFFLE " + str(shuffle))
+                try:
+                    database_cursor_insert.execute("INSERT INTO CABINETT_ROLE (cabinett_number, cabinett_reshuffle, cabinett_member, role_name) VALUES(?,?,?,?);",(cabinett_number, shuffle, person_id, role))
+                except sqlite3.IntegrityError:
+                    print("ALREADY EXISTING")
+        database_connection.commit()
+            
+
+
+            
+
+def is_role_in_columns(role, columns):
+    for column in columns:
+        if column == role:
+            return True
+    return False
+
+
+def person_in_database(database_connection:sqlite3.Connection, name):
+    return get_id_of_person(database_connection, name) > 0
+    
+def get_id_of_person(database_connection:sqlite3.Connection, name):
+    database_cursor = database_connection.cursor()
+    database_cursor.execute("""
+        SELECT internal_person_id FROM PERSON WHERE first_name = ? AND last_name = ? AND first_name_furigana = ? AND last_name_furigana = ?;
+    """, (name[0][0],name[0][1],name[1][0], name[1][1]))
+    try:
+        query_result = database_cursor.fetchone()
+        person_id = int(query_result[0])
+    except TypeError:
+        person_id = -1
+    
+    return person_id
+
+def Insert_person_to_database(database_connection:sqlite3.Connection, name, gender, party):
+    
+    database_cursor =  database_connection.cursor()
+
+    if(not person_in_database(database_connection, name)):
+        database_cursor.execute("""
+                INSERT INTO PERSON (first_name, last_name, first_name_furigana, last_name_furigana, gender, party) VALUES(?, ? ,? ,?, ?, ?);
+            """, (name[0][0],name[0][1],name[1][0], name[1][1], gender, party))
+        
+
 
 
 
@@ -74,8 +123,6 @@ def get_cabinett_members_with_role_per_shuffle_clean(shuffle_raw_html):
     return members_with_role_in_shuffle_clean
 
 def split_cabinett_member_name_in_clean_kanji_furigana(name_raw_html):
-
-
 
     name_clean = name_raw_html.replace("<td>", "")
     name_clean = name_clean.replace("</td>", "")
