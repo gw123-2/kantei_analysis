@@ -164,6 +164,8 @@ def split_cabinett_member_name_in_clean_kanji_furigana(name_raw_html):
     name_clean = name_clean.replace("\"", "")
     name_clean = name_clean.replace("alt=", "")
     name_clean = name_clean.replace(">", "")
+    name_clean = name_clean.replace("<br", "")
+    name_clean = name_clean.replace("※", "")
     name_clean = name_clean.replace("　", " ")
     name_clean:str = name_clean.replace("＊", "")
     name_clean:str = name_clean.replace("）", "")    
