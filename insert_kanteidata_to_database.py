@@ -228,10 +228,13 @@ def populate_database_with_cabinett_data(database_connection:sqlite3.Connection,
 def insert_new_cabinett_into_database(database_cursor:sqlite3.Cursor, number, shuffles):
     
     for i in range(len(shuffles)):
-        database_cursor.execute("""
-            INSERT INTO CABINETT (cabinett_number, cabinett_reshuffle, start_date) VALUES(?, ?, ?)
-        """, (str(number), str(i), str(shuffles[i]))  )
-
+        try:
+            database_cursor.execute("""
+                INSERT INTO CABINETT (cabinett_number, cabinett_reshuffle, start_date) VALUES(?, ?, ?)
+            """, (str(number), str(i), str(shuffles[i]))  )
+        except sqlite3.IntegrityError:
+            #log("ALREADY EXISTING")
+            pass
     
 def get_cabinett_number_from_html(cabinett_site:str):
     cabinett_number:str = regex.findall("第\d{1,3}代",cabinett_site)[0]
