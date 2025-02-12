@@ -206,6 +206,7 @@ def cleanup_role_name(role_raw_html):
     clean_role = clean_role.replace("</li>" ,"")
     clean_role = clean_role.replace("<br>" ,"")
     clean_role = clean_role.replace("</th>" ,"")
+    clean_role = clean_role.replace("▲" ,"")
     clean_role = clean_role.replace("<th scope=\"row\">" ,"")
     return clean_role
 
