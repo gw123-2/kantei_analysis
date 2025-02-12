@@ -202,12 +202,16 @@ def get_clean_roles_from_html(roles_raw_html):
 
 
 def cleanup_role_name(role_raw_html):
-    clean_role = role_raw_html.replace("<li>" ,"")
+    clean_role:str = role_raw_html.replace("<li>" ,"")
     clean_role = clean_role.replace("</li>" ,"")
     clean_role = clean_role.replace("<br>" ,"")
     clean_role = clean_role.replace("</th>" ,"")
-    clean_role = clean_role.replace("（" ,"")
-    clean_role = clean_role.replace("）" ,"")
+    if clean_role.find("（") == 0:
+        clean_role = clean_role[1:]
+    if clean_role.find("）") == len(clean_role)-1:
+        clean_role = clean_role[:len(clean_role)-2]
+    
+    clean_role = clean_role.replace("" ,"")
     clean_role = clean_role.replace("▲" ,"")
     clean_role = clean_role.replace("<th scope=\"row\">" ,"")
     return clean_role
