@@ -107,7 +107,7 @@ def person_in_database(database_connection:sqlite3.Connection, name):
     
 def get_id_of_person(database_cursor:sqlite3.Cursor, name):
     database_cursor.execute("""
-        SELECT internal_person_id FROM PERSON WHERE first_name = ? AND last_name = ? AND first_name_furigana = ? AND last_name_furigana = ?;
+        SELECT internal_person_id FROM PERSON WHERE last_name = ? AND first_name = ? AND last_name_furigana  = ? AND first_name_furigana= ?;
     """, (name[0][0],name[0][1],name[1][0], name[1][1]))
     try:
         query_result = database_cursor.fetchone()
@@ -121,7 +121,7 @@ def Insert_person_to_database(database_cursor:sqlite3.Cursor, name, gender, part
 
     if(not person_in_database(database_cursor, name)):
         database_cursor.execute("""
-                INSERT INTO PERSON (first_name, last_name, first_name_furigana, last_name_furigana, gender, party) VALUES(?, ? ,? ,?, ?, ?);
+                INSERT INTO PERSON ( last_name, first_name, last_name_furigana, first_name_furigana, gender, party) VALUES(?, ? ,? ,?, ?, ?);
             """, (name[0][0],name[0][1],name[1][0], name[1][1], gender, party))
         
 
@@ -146,11 +146,17 @@ def get_cabinett_members_with_role_per_shuffle_clean(shuffle_raw_html):
         name_html:str = regex.findall("<td>.+?</td>", member, flags=regex.DOTALL)[0]        
         name_clean = split_cabinett_member_name_in_clean_kanji_furigana(name_html)
 
-        roles_html = regex.findall("<li>.+?</li>", member, flags=regex.DOTALL)
+        roles_html = get_roles_raw_from_html(member)
         roles_clean = get_clean_roles_from_html(roles_html)
     
         members_with_role_in_shuffle_clean.append([name_clean, roles_clean])
     return members_with_role_in_shuffle_clean
+
+def get_roles_raw_from_html(roles_html):
+    roles_raw = regex.findall("<li>.+?</li>", roles_html, flags=regex.DOTALL)
+    if len(roles_raw) <= 0:
+        roles_raw = regex.findall("<th scope=\"row\">.+?</th>", roles_html, flags=regex.DOTALL)
+    return roles_raw
 
 def split_cabinett_member_name_in_clean_kanji_furigana(name_raw_html):
 
@@ -199,6 +205,8 @@ def cleanup_role_name(role_raw_html):
     clean_role = role_raw_html.replace("<li>" ,"")
     clean_role = clean_role.replace("</li>" ,"")
     clean_role = clean_role.replace("<br>" ,"")
+    clean_role = clean_role.replace("</th>" ,"")
+    clean_role = clean_role.replace("<th scope=\"row\">" ,"")
     return clean_role
 
 
@@ -289,6 +297,7 @@ def fill_database_with_cabinett_data_from_website(index_site_html, database_conn
         populate_database_with_cabinett_members(database_connection, cabinett_site_html)
 
 if __name__ == "__main__":
+
     database_path = input("path to databse:")
     database_connection = sqlite3.connect(database_path)
     
