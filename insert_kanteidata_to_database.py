@@ -107,8 +107,8 @@ def person_in_database(database_connection:sqlite3.Connection, name):
     
 def get_id_of_person(database_cursor:sqlite3.Cursor, name):
     database_cursor.execute("""
-        SELECT internal_person_id FROM PERSON WHERE last_name = ? AND first_name = ? AND last_name_furigana  = ? AND first_name_furigana= ?;
-    """, (name[0][0],name[0][1],name[1][0], name[1][1]))
+        SELECT internal_person_id FROM PERSON WHERE last_name = ? AND first_name = ?;
+    """, (name[0][0],name[0][1]))
     try:
         query_result = database_cursor.fetchone()
         person_id = int(query_result[0])
