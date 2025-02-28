@@ -54,7 +54,13 @@ def get_sql_connection(path):
 
 
 if __name__ == "__main__":
-    database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
-    database_connection = get_sql_connection(database_path)
-    clean_name_errors(database_connection.cursor())
-    #database_connection.commit()
+    step = 0
+    max_step = 1
+    try:
+        database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
+        database_connection = get_sql_connection(database_path)
+        clean_name_errors(database_connection.cursor())
+        #database_connection.commit()
+        step = 1
+    except KeyboardInterrupt:
+        print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
