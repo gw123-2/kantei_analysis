@@ -1,7 +1,7 @@
 import sqlite3
 import re as regex
 import urllib.request
-import os.path
+import base_tools
 
 DEFAULT_KANTEI_INDEX = "https://www.kantei.go.jp/jp/rekidainaikaku/index.html"
 
@@ -316,35 +316,13 @@ def fill_database_with_cabinett_data_from_website(index_site_html, database_conn
         populate_database_with_cabinett_members(database_connection, cabinett_site_html)
 
 
-def get_int_input(message, upper_limit = 1, lower_limit = 0):
-    answer = None
-    while answer == None:
-        user_input = input(message)
-        try:
-            input_number = int(user_input)
-            if input_number < lower_limit or input_number > upper_limit:
-                print("number is not within boundaries, please try again")
-                answer = None
-            else:
-                answer = input_number
-        except ValueError:
-            print("Input does not contain a number, please try again")
-            answer = None
-    return answer
-        
-def get_database_path():
-    database_path = None
-    while database_path == None:
-        database_path = input("filename for new databse:")
-        if(os.path.isfile(database_path)):
-            print("file already exists, please chose a different name")
-            database_path = None
-    return database_path
+
+ 
 
 def get_kantei_website():
     index_site_html = None
     while index_site_html == None:
-        site_to_be_analyzed = input("input url to kantei site: ")
+        site_to_be_analyzed = input("input url to kantei site:\t")
         if site_to_be_analyzed == "":
             return get_html_text(DEFAULT_KANTEI_INDEX)
         index_site_html = get_html_text(site_to_be_analyzed)
@@ -352,9 +330,9 @@ def get_kantei_website():
 if __name__ == "__main__":
 
     
-    database_path = get_database_path()    
+    database_path = base_tools.get_path_for_new_file("filename for new databse:\t")    
     index_site_html = get_kantei_website()
-    CORRECTION_MODE = bool(get_int_input("do you want to MANUALLY correct mistakes if they are found during the populating process?\n Type number to select:\n 0:NO \t 1:YES"))
+    CORRECTION_MODE = base_tools.get_bool_input("do you want to MANUALLY correct mistakes if they are found during the populating process?\n Type number to select:\n 0:NO \t 1:YES"))
     
     database_connection = sqlite3.connect(database_path)
 
