@@ -328,20 +328,24 @@ def get_kantei_website():
         index_site_html = get_html_text(site_to_be_analyzed)
 
 if __name__ == "__main__":
+    step = 0
+    max_step = 2
+    try:
+        database_path = base_tools.get_path_for_new_file("filename for new databse:\t")    
+        index_site_html = get_kantei_website()
+        CORRECTION_MODE = base_tools.get_bool_input("do you want to MANUALLY correct mistakes if they are found during the populating process?\n Type number to select:\n 0:NO \t 1:YES")
+        
+        database_connection = sqlite3.connect(database_path)
 
-    
-    database_path = base_tools.get_path_for_new_file("filename for new databse:\t")    
-    index_site_html = get_kantei_website()
-    CORRECTION_MODE = base_tools.get_bool_input("do you want to MANUALLY correct mistakes if they are found during the populating process?\n Type number to select:\n 0:NO \t 1:YES")
-    
-    database_connection = sqlite3.connect(database_path)
+        log("setting up database...")
+        setup_database(database_connection.cursor())
+        database_connection.commit()
+        log("done!")
+        step = 1
 
-    log("setting up database...")
-    setup_database(database_connection.cursor())
-    database_connection.commit()
-    log("done!")
-
-
-    log("filling database with data...")
-    fill_database_with_cabinett_data_from_website(index_site_html, database_connection)
-    log("Done!")
+        log("filling database with data...")
+        fill_database_with_cabinett_data_from_website(index_site_html, database_connection)
+        log("Done!")
+        step = 2
+    except KeyboardInterrupt:
+        print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
