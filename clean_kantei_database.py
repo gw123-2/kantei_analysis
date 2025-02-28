@@ -43,7 +43,52 @@ def clean_name_errors(db_cursor:sqlite3.Cursor):
     """)
     list_of_problems = db_cursor.fetchall()
     for problem in list_of_problems:
-        process_name_problem(db_cursor, problem)            
+        process_name_problem(db_cursor, problem)
+
+def let_user_choose_set_to_keep(variants):
+    message = "which version do you want to keep? every other version will be replaced and finally removed.\n select by typing a number:"
+    for i in range(len(variants)):
+        message += "\n" + str(i) + ": " + str(variants[i])
+    message += "\nkeep: "
+    set_to_keep = base_tools.get_int_input(message, len(variants)-1)
+    return set_to_keep
+
+def overwrite_duplicates_in_database(db_cursor:sqlite3.Cursor, variants, set_to_keep):
+    id_to_keep = variants[set_to_keep][0]
+    for variant in variants:
+        if not variant[0] == id_to_keep:
+            db_cursor.execute("""
+        UPDATE CABINETT_ROLE SET cabinett_member = ? WHERE cabinett_member = ?;                          
+    """, (id_to_keep, variant[0]))
+            print("replacing " + str(variant))
+            db_cursor.execute("""
+        UPDATE PERSON SET gender = ? WHERE internal_person_id = ?;                          
+    """, ("#REMOVE#", variant[0]))
+            print("flagged "+ str(variant))
+        
+            
+    
+def process_duplicate(db_cursor:sqlite3.Cursor, duplicate):
+    db_cursor.execute("""
+    SELECT * FROM PERSON WHERE first_name = ? and last_name = ?;
+""", (duplicate[1], duplicate[2]))
+    variants = db_cursor.fetchall()
+    set_to_keep = let_user_choose_set_to_keep(variants)
+    print("keeping: " + str(variants[set_to_keep]))
+    
+
+def clean_duplicates(db_cursor:sqlite3.Cursor):
+    db_cursor.execute("""
+    SELECT internal_person_id, first_name, last_name, COUNT(*) FROM PERSON GROUP BY first_name, last_name HAVING COUNT(*)>1;
+""")
+    duplicates = db_cursor.fetchall()
+    for duplicate in duplicates:
+        process_duplicate(db_cursor, duplicate)
+
+
+
+def remove_flagged_persons(db_cursor):
+    pass
 
 def get_sql_connection(path):
     #try:
@@ -59,8 +104,14 @@ if __name__ == "__main__":
     try:
         database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
         database_connection = get_sql_connection(database_path)
-        clean_name_errors(database_connection.cursor())
-        #database_connection.commit()
+
+        cursor = database_connection.cursor()
+        clean_name_errors(cursor)
+        cursor.close()
+        cursor = database_connection.cursor()
+        clean_duplicates(cursor)
+        cursor.close()
+        database_connection.commit()
         step = 1
     except KeyboardInterrupt:
         print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
