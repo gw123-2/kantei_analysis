@@ -1,6 +1,9 @@
 import sqlite3
 import re as regex
 import urllib.request
+import os.path
+
+DEFAULT_KANTEI_INDEX = "https://www.kantei.go.jp/jp/rekidainaikaku/index.html"
 
 def setup_database(database_cursor:sqlite3.Cursor):
     database_cursor.execute("""
@@ -183,7 +186,13 @@ def split_cabinett_member_name_in_clean_kanji_furigana(name_raw_html):
         name_furigana_clean = ["", ""]
         name_kanji_clean = name_clean[0].split(" ")
     if len(name_kanji_clean) != 2:
-        name_kanji_clean = [name_kanji_clean[0], name_kanji_clean[0]]
+        if(CORRECTION_MODE):
+            print("error with name: "+ name_kanji_clean + ". please help with correction")
+            last_name = input("please input LAST name:\t")
+            first_name = input("please input FIRST name:\t")
+            name_kanji_clean = [last_name, first_name]
+        else:
+            name_kanji_clean = [name_kanji_clean[0], name_kanji_clean[0]]
     if len(name_furigana_clean) != 2:
         name_furigana_clean = ["", ""]
         
@@ -306,19 +315,55 @@ def fill_database_with_cabinett_data_from_website(index_site_html, database_conn
         populate_database_with_cabinett_data(database_connection, cabinett_site_html)
         populate_database_with_cabinett_members(database_connection, cabinett_site_html)
 
+
+def get_int_input(message, upper_limit = 1, lower_limit = 0):
+    answer = None
+    while answer == None:
+        user_input = input(message)
+        try:
+            input_number = int(user_input)
+            if input_number < lower_limit or input_number > upper_limit:
+                print("number is not within boundaries, please try again")
+                answer = None
+            else:
+                answer = input_number
+        except ValueError:
+            print("Input does not contain a number, please try again")
+            answer = None
+    return answer
+        
+def get_database_path():
+    database_path = None
+    while database_path == None:
+        database_path = input("filename for new databse:")
+        if(os.path.isfile(database_path)):
+            print("file already exists, please chose a different name")
+            database_path = None
+    return database_path
+
+def get_kantei_website():
+    index_site_html = None
+    while index_site_html == None:
+        site_to_be_analyzed = input("input url to kantei site: ")
+        if site_to_be_analyzed == "":
+            return get_html_text(DEFAULT_KANTEI_INDEX)
+        index_site_html = get_html_text(site_to_be_analyzed)
+
 if __name__ == "__main__":
 
-    database_path = input("path to databse:")
-    database_connection = sqlite3.connect(database_path)
     
+    database_path = get_database_path()    
+    index_site_html = get_kantei_website()
+    CORRECTION_MODE = bool(get_int_input("do you want to MANUALLY correct mistakes if they are found during the populating process?\n Type number to select:\n 0:NO \t 1:YES"))
+    
+    database_connection = sqlite3.connect(database_path)
+
     log("setting up database...")
     setup_database(database_connection.cursor())
     database_connection.commit()
     log("done!")
-    index_site_html = None
-    while index_site_html == None:
-        site_to_be_analyzed = input("input url to kantei site: ")
-        index_site_html = get_html_text(site_to_be_analyzed)
+
+
     log("filling database with data...")
     fill_database_with_cabinett_data_from_website(index_site_html, database_connection)
     log("Done!")
