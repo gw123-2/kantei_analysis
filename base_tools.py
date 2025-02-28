@@ -11,7 +11,11 @@ def get_path_for_existing_file(message:str) -> str:
             database_path = None
     return database_path
 
-
+def copy_tuple_to_list(tuple:tuple) -> list:
+    final_list = []
+    for element in tuple:
+        final_list.append(element)
+    return final_list
 
 def get_path_for_new_file(message:str) -> str:
     database_path = None
