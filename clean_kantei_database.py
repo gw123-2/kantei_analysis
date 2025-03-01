@@ -65,7 +65,6 @@ def overwrite_duplicates_in_database(db_cursor:sqlite3.Cursor, variants, set_to_
         UPDATE PERSON SET gender = ? WHERE internal_person_id = ?;                          
     """, ("#REMOVE#", variant[0]))
             print("flagged "+ str(variant))
-        
             
     
 def process_duplicate(db_cursor:sqlite3.Cursor, duplicate):
@@ -75,6 +74,7 @@ def process_duplicate(db_cursor:sqlite3.Cursor, duplicate):
     variants = db_cursor.fetchall()
     set_to_keep = let_user_choose_set_to_keep(variants)
     print("keeping: " + str(variants[set_to_keep]))
+    overwrite_duplicates_in_database(db_cursor, variants, set_to_keep)
     
 
 def clean_duplicates(db_cursor:sqlite3.Cursor):
@@ -87,8 +87,11 @@ def clean_duplicates(db_cursor:sqlite3.Cursor):
 
 
 
-def remove_flagged_persons(db_cursor):
-    pass
+def remove_flagged_persons(db_cursor:sqlite3.Cursor):
+    db_cursor.execute("""
+    DELETE FROM PERSON WHERE gender = "#REMOVE#"
+""")
+
 
 def get_sql_connection(path):
     #try:
@@ -100,18 +103,29 @@ def get_sql_connection(path):
 
 if __name__ == "__main__":
     step = 0
-    max_step = 1
+    max_step = 3
     try:
         database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
         database_connection = get_sql_connection(database_path)
 
         cursor = database_connection.cursor()
         clean_name_errors(cursor)
+        database_connection.commit()
         cursor.close()
+        step = 1
+
         cursor = database_connection.cursor()
         clean_duplicates(cursor)
-        cursor.close()
         database_connection.commit()
-        step = 1
+        cursor.close()
+        step = 2
+
+        if(base_tools.get_bool_input("Do you want to delete flagged Datasets? \nYes/No:\t")):
+            cursor = database_connection.cursor()
+            remove_flagged_persons(cursor)
+            database_connection.commit()
+            cursor.close()
+        step = 3
+        print("done.")
     except KeyboardInterrupt:
         print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
