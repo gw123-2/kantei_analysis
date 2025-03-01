@@ -104,10 +104,10 @@ def get_sql_connection(path):
 if __name__ == "__main__":
     step = 0
     max_step = 3
+    
+    database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
+    database_connection = get_sql_connection(database_path)
     try:
-        database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
-        database_connection = get_sql_connection(database_path)
-
         cursor = database_connection.cursor()
         clean_name_errors(cursor)
         database_connection.commit()
@@ -129,3 +129,6 @@ if __name__ == "__main__":
         print("done.")
     except KeyboardInterrupt:
         print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
+        if(base_tools.get_bool_input("do you want to save the changes made?\nYes/No:\t")):
+            database_connection.commit()
+    database_connection.close()
