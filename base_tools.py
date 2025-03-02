@@ -46,7 +46,7 @@ def get_bool_input(message:str) -> bool:
     yes_options = ["y", "yes"]
     no_options = ["n", "no"]
 
-    user_input = input(message)
+    user_input = input(str(message) + "\nYes/No:\t")
     answer = None
     user_input = user_input.lower()
     user_input = user_input.strip()
