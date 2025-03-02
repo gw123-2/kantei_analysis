@@ -112,6 +112,7 @@ def process_nonreferenced_persons(db_cursor:sqlite3.Cursor):
     SELECT * FROM PERSON WHERE internal_person_id NOT IN (SELECT cabinett_member FROM CABINETT_ROLE);
 """)
     orphaned_members = db_cursor.fetchall()
+    print(str(len(orphaned_members)) + " unreferenced persons found.")
     for orphan in orphaned_members:
         delete_dataset_from_database(db_cursor, orphan)
 
@@ -158,13 +159,13 @@ if __name__ == "__main__":
         if(base_tools.get_bool_input("Do you want to delete flagged Datasets?")):
             remove_flagged_persons(cursor)
             save_to_db(database_connection)
-        cursor.close()
         step = 3
-        
+
         process_nonreferenced_persons(cursor)
         save_to_db(database_connection)
         step = 4
-
+        
+        cursor.close()
         print("done.")
     except KeyboardInterrupt:
         print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
