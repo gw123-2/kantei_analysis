@@ -46,9 +46,7 @@ def clean_name_errors(db_cursor:sqlite3.Cursor):
         process_name_problem(db_cursor, problem)
           
         if AUTOSAVE:
-            print("saving...")
-            database_connection.commit()
-            print("saved")
+            save_to_db(database_connection)
 
 def let_user_choose_set_to_keep(variants):
     message = "which version do you want to keep? every other version will be replaced and finally removed.\n select by typing a number:"
@@ -91,9 +89,7 @@ def clean_duplicates(db_cursor:sqlite3.Cursor):
         process_duplicate(db_cursor, duplicate)
             
         if AUTOSAVE:
-            print("saving...")
-            database_connection.commit()
-            print("saved")
+            save_to_db(database_connection)
 
 
 
@@ -109,7 +105,10 @@ def get_sql_connection(path):
         return db_connection
     #except 
 
-
+def save_to_db(db_connection:sqlite3.Connection):
+    print("saving...")
+    db_connection.commit()
+    print("saved")
 
 if __name__ == "__main__":
     step = 0
@@ -118,21 +117,21 @@ if __name__ == "__main__":
     database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
     database_connection = get_sql_connection(database_path)
 
-    AUTOSAVE = base_tools.get_bool_input("Do you want to activate autosave after every manual change?")
+    AUTOSAVE = base_tools.get_bool_input("Do you want to activate autosave after every manual change? this process might be slower than normal.")
 
     try:
         cursor = database_connection.cursor()
         clean_name_errors(cursor)
-        database_connection.commit()
+        save_to_db(database_connection)
         step = 1
 
         clean_duplicates(cursor)
-        database_connection.commit()
+        save_to_db(database_connection)
         step = 2
 
         if(base_tools.get_bool_input("Do you want to delete flagged Datasets?")):
             remove_flagged_persons(cursor)
-            database_connection.commit()
+            save_to_db(database_connection)
         
         cursor.close()
         step = 3
