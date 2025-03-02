@@ -83,7 +83,7 @@ def process_duplicate(db_cursor:sqlite3.Cursor, duplicate):
 
 def clean_duplicates(db_cursor:sqlite3.Cursor):
     db_cursor.execute("""
-    SELECT internal_person_id, first_name, last_name, COUNT(*) FROM PERSON GROUP BY first_name, last_name HAVING COUNT(*)>1;
+    SELECT internal_person_id, first_name, last_name, COUNT(*) FROM PERSON WHERE gender != "#REMOVE#" GROUP BY first_name, last_name HAVING COUNT(*)>1 ;
 """)
     duplicates = db_cursor.fetchall()
     print(str(len(duplicates)) + " duplicates found")
@@ -103,7 +103,8 @@ def delete_dataset_from_database(db_cursor:sqlite3.Cursor, dataset):
 
         if AUTOSAVE:
             save_to_db(database_connection)
-    print("skipped  " + str(dataset))
+    else:
+        print("skipped  " + str(dataset))
 
 
 def process_nonreferenced_persons(db_cursor:sqlite3.Cursor):
@@ -151,7 +152,7 @@ if __name__ == "__main__":
         save_to_db(database_connection)
         step = 2
 
-        process_nonreferenced_persons()
+        process_nonreferenced_persons(cursor)
         save_to_db(database_connection)
         step = 3
 
