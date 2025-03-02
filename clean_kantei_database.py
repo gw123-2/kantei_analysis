@@ -152,17 +152,19 @@ if __name__ == "__main__":
         save_to_db(database_connection)
         step = 2
 
-        process_nonreferenced_persons(cursor)
-        save_to_db(database_connection)
-        step = 3
+        
 
 
         if(base_tools.get_bool_input("Do you want to delete flagged Datasets?")):
             remove_flagged_persons(cursor)
             save_to_db(database_connection)
-        
         cursor.close()
+        step = 3
+        
+        process_nonreferenced_persons(cursor)
+        save_to_db(database_connection)
         step = 4
+
         print("done.")
     except KeyboardInterrupt:
         print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
