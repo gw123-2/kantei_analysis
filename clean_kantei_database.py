@@ -44,6 +44,9 @@ def clean_name_errors(db_cursor:sqlite3.Cursor):
     list_of_problems = db_cursor.fetchall()
     for problem in list_of_problems:
         process_name_problem(db_cursor, problem)
+          
+        if AUTOSAVE:
+            database_connection.commit()
 
 def let_user_choose_set_to_keep(variants):
     message = "which version do you want to keep? every other version will be replaced and finally removed.\n select by typing a number:"
@@ -84,6 +87,9 @@ def clean_duplicates(db_cursor:sqlite3.Cursor):
     duplicates = db_cursor.fetchall()
     for duplicate in duplicates:
         process_duplicate(db_cursor, duplicate)
+            
+        if AUTOSAVE:
+            database_connection.commit()
 
 
 
@@ -107,28 +113,28 @@ if __name__ == "__main__":
     
     database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
     database_connection = get_sql_connection(database_path)
+
+    AUTOSAVE = base_tools.get_bool_input("Do you want to activate autosave after every manual change?")
+
     try:
         cursor = database_connection.cursor()
         clean_name_errors(cursor)
         database_connection.commit()
-        cursor.close()
         step = 1
 
-        cursor = database_connection.cursor()
         clean_duplicates(cursor)
         database_connection.commit()
-        cursor.close()
         step = 2
 
-        if(base_tools.get_bool_input("Do you want to delete flagged Datasets? \nYes/No:\t")):
-            cursor = database_connection.cursor()
+        if(base_tools.get_bool_input("Do you want to delete flagged Datasets?")):
             remove_flagged_persons(cursor)
             database_connection.commit()
-            cursor.close()
+        
+        cursor.close()
         step = 3
         print("done.")
     except KeyboardInterrupt:
         print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
-        if(base_tools.get_bool_input("do you want to save the changes made?\nYes/No:\t")):
+        if(base_tools.get_bool_input("do you want to save the changes made?")):
             database_connection.commit()
     database_connection.close()
