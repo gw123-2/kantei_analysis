@@ -42,6 +42,7 @@ def clean_name_errors(db_cursor:sqlite3.Cursor):
         SELECT * FROM PERSON WHERE first_name = last_name
     """)
     list_of_problems = db_cursor.fetchall()
+    print(str(len(list_of_problems))+ " name problems found")
     for problem in list_of_problems:
         process_name_problem(db_cursor, problem)
           
@@ -85,6 +86,7 @@ def clean_duplicates(db_cursor:sqlite3.Cursor):
     SELECT internal_person_id, first_name, last_name, COUNT(*) FROM PERSON GROUP BY first_name, last_name HAVING COUNT(*)>1;
 """)
     duplicates = db_cursor.fetchall()
+    print(str(len(duplicates)) + " duplicates found")
     for duplicate in duplicates:
         process_duplicate(db_cursor, duplicate)
             
