@@ -46,7 +46,9 @@ def clean_name_errors(db_cursor:sqlite3.Cursor):
         process_name_problem(db_cursor, problem)
           
         if AUTOSAVE:
+            print("saving...")
             database_connection.commit()
+            print("saved")
 
 def let_user_choose_set_to_keep(variants):
     message = "which version do you want to keep? every other version will be replaced and finally removed.\n select by typing a number:"
@@ -89,7 +91,9 @@ def clean_duplicates(db_cursor:sqlite3.Cursor):
         process_duplicate(db_cursor, duplicate)
             
         if AUTOSAVE:
+            print("saving...")
             database_connection.commit()
+            print("saved")
 
 
 
