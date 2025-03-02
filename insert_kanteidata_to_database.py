@@ -185,7 +185,7 @@ def split_cabinett_member_name_in_clean_kanji_furigana(name_raw_html):
     except IndexError:
         name_furigana_clean = ["", ""]
         name_kanji_clean = name_clean[0].split(" ")
-    if len(name_kanji_clean) != 2:
+    if len(name_kanji_clean) < 2:
         if(CORRECTION_MODE):
             print("error with name: "+ name_kanji_clean + ". please help with correction")
             last_name = input("please input LAST name:\t")
@@ -193,7 +193,7 @@ def split_cabinett_member_name_in_clean_kanji_furigana(name_raw_html):
             name_kanji_clean = [last_name, first_name]
         else:
             name_kanji_clean = [name_kanji_clean[0], name_kanji_clean[0]]
-    if len(name_furigana_clean) != 2:
+    if len(name_furigana_clean) < 2:
         name_furigana_clean = ["", ""]
         
 
