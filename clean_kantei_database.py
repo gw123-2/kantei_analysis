@@ -93,6 +93,26 @@ def clean_duplicates(db_cursor:sqlite3.Cursor):
         if AUTOSAVE:
             save_to_db(database_connection)
 
+def delete_dataset_from_database(db_cursor:sqlite3.Cursor, dataset):
+    if base_tools.get_bool_input(str(dataset) + " does not have a role (is not referenced). do you want to delete the set?"):
+        print("deleting " + str(dataset))
+
+        db_cursor.execute("""
+        DELETE FROM PERSON WHERE internal_person_id = ?;
+        """, (dataset[0],))
+
+        if AUTOSAVE:
+            save_to_db(database_connection)
+    print("skipped  " + str(dataset))
+
+
+def process_nonreferenced_persons(db_cursor:sqlite3.Cursor):
+    db_cursor.execute("""
+    SELECT * FROM PERSON WHERE internal_person_id NOT IN (SELECT cabinett_member FROM CABINETT_ROLE);
+""")
+    orphaned_members = db_cursor.fetchall()
+    for orphan in orphaned_members:
+        delete_dataset_from_database(db_cursor, orphan)
 
 
 def remove_flagged_persons(db_cursor:sqlite3.Cursor):
@@ -114,7 +134,7 @@ def save_to_db(db_connection:sqlite3.Connection):
 
 if __name__ == "__main__":
     step = 0
-    max_step = 3
+    max_step = 4
     
     database_path = base_tools.get_path_for_existing_file("filename of database to clean:\t")
     database_connection = get_sql_connection(database_path)
@@ -131,12 +151,17 @@ if __name__ == "__main__":
         save_to_db(database_connection)
         step = 2
 
+        process_nonreferenced_persons()
+        save_to_db(database_connection)
+        step = 3
+
+
         if(base_tools.get_bool_input("Do you want to delete flagged Datasets?")):
             remove_flagged_persons(cursor)
             save_to_db(database_connection)
         
         cursor.close()
-        step = 3
+        step = 4
         print("done.")
     except KeyboardInterrupt:
         print("\nManually cancelled via KeyboardInterrupt (Ctrl + C) after step " + str(step) + "/" + str(max_step) + ".")
