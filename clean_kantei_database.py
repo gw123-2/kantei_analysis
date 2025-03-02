@@ -111,9 +111,9 @@ def process_nonreferenced_persons(db_cursor:sqlite3.Cursor):
     db_cursor.execute("""
     SELECT * FROM PERSON WHERE internal_person_id NOT IN (SELECT cabinett_member FROM CABINETT_ROLE);
 """)
-    orphaned_members = db_cursor.fetchall()
-    print(str(len(orphaned_members)) + " unreferenced persons found.")
-    for orphan in orphaned_members:
+    unreferenced_person_datasets = db_cursor.fetchall()
+    print(str(len(unreferenced_person_datasets)) + " unreferenced persons found.")
+    for orphan in unreferenced_person_datasets:
         delete_dataset_from_database(db_cursor, orphan)
 
 
