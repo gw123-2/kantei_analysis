@@ -23,6 +23,7 @@ def setup_database(database_cursor:sqlite3.Cursor):
                             cabinett_number INTEGER NOT NULL,
                             cabinett_reshuffle  INTEGER NOT NULL,
                             start_date TEXT NOT NULL,
+                            end_date TEXT NOT NULL,
 
                             PRIMARY KEY (cabinett_number, cabinett_reshuffle)
                             );
