@@ -1,0 +1,10 @@
+############ All women in the 103rd cabinett ##########################################
+
+SELECT * FROM PERSON WHERE gender = "f" and internal_person_id in 
+	(SELECT cabinett_member FROM CABINETT_ROLE WHERE cabinett_number = 103 and cabinett_reshuffle = 0);
+
+############ All Women with a normal minister post #################################### 
+
+SELECT COUNT(*) FROM PERSON WHERE gender = "f" and internal_person_id IN
+    (SELECT cabinett_member FROM CABINETT_ROLE WHERE role_name not like "%副大臣%" and role_name not like "%政務官%" and role_name not like "%補佐官%");
+
