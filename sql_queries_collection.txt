@@ -15,3 +15,10 @@ SELECT DISTINCT * FROM CABINETT INNER JOIN
 		(SELECT internal_person_id FROM PERSON WHERE gender = "f") 
 	and role_name not like "%副大臣%" and role_name not like "%政務官%" and role_name not like "%補佐官%")
 USING (cabinett_number, cabinett_reshuffle) WHERE cabinett_number > 43;
+
+
+######### How often women occupied which post ##########################################
+
+SELECT role_name, COUNT(*) FROM CABINETT_ROLE WHERE role_name not like "%副大臣%" and role_name not like "%政務官%" and role_name not like "%補佐官%"and role_name not like "%副長官%" AND 
+	cabinett_member IN (SELECT internal_person_id FROM PERSON WHERE gender = "f")
+GROUP BY role_name ORDER BY COUNT(*) DESC;
